@@ -106,7 +106,3 @@ python main.py
 - The bot reads the .ods file on startup. Make sure your file path is correct.
 - The Own column is case-insensitive (yes / no).
 - You can expand the collection by adding more movies with the required columns.
-
-```
-
-```

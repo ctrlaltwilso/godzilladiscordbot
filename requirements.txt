@@ -1,0 +1,5 @@
+discord.py==2.6.2
+numpy==2.3.2
+odfpy==1.4.1
+pandas==2.3.2
+python-dotenv==1.1.1

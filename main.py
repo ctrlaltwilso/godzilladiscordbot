@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord.ui import View
 from dotenv import load_dotenv
 from movie_manager.movie_manager import update_movie, mark_not_owned, list_movies
 from datetime import datetime
@@ -21,6 +22,39 @@ def log_action(action: str, user: str):
     print(f"[{now}] {user}: {action}")
 
 
+class MovieUpdater(View):
+    def __init__(self, title: str, year: int):
+        super().__init__(timeout=None)
+        self.title = title
+        self.year = year
+
+    @discord.ui.button(label="Owned", style=discord.ButtonStyle.success)  # type: ignore
+    async def mark_owned(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        result = update_movie(title=self.title, year=self.year)
+        await interaction.response.send_message(result)
+
+    @discord.ui.button(label="Not Owned", style=discord.ButtonStyle.danger)  # type: ignore
+    async def marked_not_owned(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        result = mark_not_owned(title=self.title, year=self.year)
+        await interaction.response.send_message(result)
+
+
+@bot.command()
+async def movie(ctx, year: int, *, title: str):
+    update_message = discord.Embed(
+        title=f"{title} ({year})",
+        description="Use button to mark Owned or Not Owned",
+        color=discord.Color.green(),
+    )
+
+    await ctx.send(embed=update_message, view=MovieUpdater(title, year))
+
+
+# Legacy
 @bot.command()
 async def own(ctx, year: int, *, title: str):
     """Mark movie as owned."""
@@ -29,6 +63,7 @@ async def own(ctx, year: int, *, title: str):
     await ctx.send(result)
 
 
+# Legacy
 @bot.command()
 async def notown(ctx, year: int, *, title: str):
     """Marks movies as not owned."""

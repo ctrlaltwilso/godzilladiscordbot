@@ -21,7 +21,6 @@ def set_ownership(title: str, year: int, own_status: str) -> str:
     df = load_movies_df()
     df = df.reset_index(drop=True)
     df.index = range(1, len(df) + 1)
-    print(df.head())
 
     # Normalize
     mask = (df["Year"].astype(int) == int(year)) & (
@@ -33,7 +32,6 @@ def set_ownership(title: str, year: int, own_status: str) -> str:
         return f"ℹ️ Information: Could not find {title} ({year})"
 
     idx = df.index[mask][0]
-    print("index value: ", idx)
     current_status = df.at[idx, "Own"].strip().lower()
     desitred_status = own_status.lower()
 

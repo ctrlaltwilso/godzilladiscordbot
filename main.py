@@ -43,4 +43,19 @@ async def movies(ctx, *keywords):
     await ctx.send(result)
 
 
+# Embed Additions
+@bot.command()
+async def vegetables(ctx):
+    e_message = discord.Embed(
+        title="Gojira Butler ",
+        type="rich",
+        description="Godzilla eats his vegetables.",
+        color=discord.Color.green(),
+    )
+    image_url = "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExZWYwd2w1Y3RkdnA1bjN0ZTJ4cXFieWFiZHN0M3ptbmd5aXR5bW1yeiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2A0jXvUa3KOufBYT53/giphy.gif"
+    e_message.set_image(url=image_url)
+
+    await ctx.send(embed=e_message)
+
+
 bot.run(token=TOKEN)

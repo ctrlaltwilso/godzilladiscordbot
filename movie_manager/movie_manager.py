@@ -62,7 +62,7 @@ def mark_not_owned(title: str = "default", year: int = 0):
 
 # TODO: Remove ascii table and uninstall from .venv
 # TODO: Clean up function to only handle data and send response for pagination
-def list_movies(keyword: str = "") -> str:
+def list_movies(keyword: str = "") -> list[dict]:
     """
     Returns a formatted string of all movies contianing the keyword.
     If no keyword is given, returns all movies.
@@ -73,30 +73,15 @@ def list_movies(keyword: str = "") -> str:
         mask = df["Title"].str.strip().str.lower().str.contains(keyword.lower())
         df = df[mask]
 
-    if df.empty:
-        return f"ℹ️ No movies found for '{keyword}'."
-
     # lines = [
     #     f"{row['Title']} ({row['Year']}): {row['Own']}" for _, row in df.iterrows()
     # ]
 
-    lines = []
-    title_width = 40
+    movies = []
 
     for _, row in df.iterrows():
-        wrap_title = textwrap.wrap(
-            str(row["Title"]), width=title_width, break_long_words=True
-        )
-        own = "✅" if str(row["Own"]).lower() == "yes" else "❌"
+        movies.append({"title": row["Title"], "year": row["Year"], "own": row["Own"]})
 
-        lines.append([wrap_title[0], row["Year"], own])
-        for line in wrap_title[1:]:
-            lines.append([line, "", ""])
-
-    output = table2ascii(
-        header=["Title", "Year", "Owned"], body=lines, first_col_heading=True
-    )
-
-    return output
+    return movies
 
     # return "\n".join(lines)

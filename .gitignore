@@ -221,3 +221,6 @@ __marimo__/
 # ODS Files
 *.ods
 .~lock.*#
+
+# Source folder
+src/

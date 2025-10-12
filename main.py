@@ -52,6 +52,58 @@ class MovieUpdater(View):
         await interaction.response.send_message(result)
 
 
+class MovieView(View):
+    message: discord.Message | None
+
+    def __init__(self, movies, per_page=20):
+        super().__init__(timeout=300)
+        self.movies = movies
+        self.per_page = per_page
+        self.page = 0
+
+    async def on_timeout(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+            if self.message:
+                await self.message.edit(view=self)
+
+    def make_embed(self):
+        start = self.page * self.per_page
+        end = start + self.per_page
+        current_movies = self.movies[start:end]
+
+        embed = discord.Embed(
+            title=f"Godzilla Movies (Page {self.page + 1}/{(len(self.movies) - 1) // self.per_page + 1})",
+            color=discord.Color.blurple(),
+        )
+
+        for movie in current_movies:
+            own = "✅" if movie["own"] == "Yes" else "❌"
+            embed.add_field(
+                name=f"{own} {movie['title']} ({movie['year']})",
+                value="",
+                inline=False,
+            )
+        return embed
+
+    @discord.ui.button(label="⬅️ Prev.", style=discord.ButtonStyle.secondary)
+    async def prev_page(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.page > 0:
+            self.page -= 1
+            await interaction.response.edit_message(embed=self.make_embed(), view=self)
+
+    @discord.ui.button(label="➡️ next", style=discord.ButtonStyle.secondary)
+    async def next_page(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if (self.page + 1) * self.per_page < len(self.movies):
+            self.page += 1
+            await interaction.response.edit_message(embed=self.make_embed(), view=self)
+
+
 @bot.tree.command(name="movie", description="Change ownership of a movie")
 @app_commands.describe(
     year="The year the movie was released", title="The title of the movie"
@@ -102,16 +154,16 @@ async def notown(ctx, year: int, *, title: str):
 # TODO: Change to paginated response and remove ascii table
 # TODO: Will need class to handle view
 # TODO: Change to Slash Command
+# TODO: Check results, list movies no longer does it
 @bot.command()
 async def movies(ctx, *keywords):
     keyword = " ".join(keywords)
-    result = list_movies(keyword=keyword)
-    discord_m = discord.Embed(
-        title="Godzilla Films List",
-        description=f"```{result}```",
-        color=discord.Color.dark_red(),
-    )
-    await ctx.send(embed=discord_m)
+    movies = list_movies(keyword=keyword)
+    if not movies:
+        await ctx.send("ℹ️ No movies found.")
+
+    view = MovieView(movies)
+    await ctx.send(embed=view.make_embed(), view=view)
 
 
 # Embed Additions

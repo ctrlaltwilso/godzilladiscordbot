@@ -1,6 +1,4 @@
 import pandas as pd
-from table2ascii import table2ascii
-import textwrap
 
 ODS_file = "./src/GodZilla_Films.ods"
 movie_sheet = "Movie List"
@@ -60,8 +58,6 @@ def mark_not_owned(title: str = "default", year: int = 0):
     return set_ownership(title, year, "No")
 
 
-# TODO: Remove ascii table and uninstall from .venv
-# TODO: Clean up function to only handle data and send response for pagination
 def list_movies(keyword: str = "") -> list[dict]:
     """
     Returns a formatted string of all movies contianing the keyword.
@@ -73,15 +69,9 @@ def list_movies(keyword: str = "") -> list[dict]:
         mask = df["Title"].str.strip().str.lower().str.contains(keyword.lower())
         df = df[mask]
 
-    # lines = [
-    #     f"{row['Title']} ({row['Year']}): {row['Own']}" for _, row in df.iterrows()
-    # ]
-
     movies = []
 
     for _, row in df.iterrows():
         movies.append({"title": row["Title"], "year": row["Year"], "own": row["Own"]})
 
     return movies
-
-    # return "\n".join(lines)

@@ -132,29 +132,7 @@ async def on_ready():
         print(f"Error syncing commands: {e}")
 
 
-# Legacy
-# TODO: Can Remove ?
-@bot.command()
-async def own(ctx, year: int, *, title: str):
-    """Mark movie as owned."""
-    result = update_movie(title=title, year=year)
-    log_action(f"Marked '{title}' ({year}) as owned.", ctx.author.name)
-    await ctx.send(result)
-
-
-# Legacy
-# TODO: Can remove ?
-@bot.command()
-async def notown(ctx, year: int, *, title: str):
-    """Marks movies as not owned."""
-    result = mark_not_owned(title=title, year=year)
-    await ctx.send(result)
-
-
-# TODO: Change to paginated response and remove ascii table
-# TODO: Will need class to handle view
 # TODO: Change to Slash Command
-# TODO: Check results, list movies no longer does it
 @bot.command()
 async def movies(ctx, *keywords):
     keyword = " ".join(keywords)

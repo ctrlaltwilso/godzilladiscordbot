@@ -1,4 +1,6 @@
 import pandas as pd
+from table2ascii import table2ascii
+import textwrap
 
 ODS_file = "./src/GodZilla_Films.ods"
 movie_sheet = "Movie List"
@@ -58,6 +60,8 @@ def mark_not_owned(title: str = "default", year: int = 0):
     return set_ownership(title, year, "No")
 
 
+# TODO: Remove ascii table and uninstall from .venv
+# TODO: Clean up function to only handle data and send response for pagination
 def list_movies(keyword: str = "") -> str:
     """
     Returns a formatted string of all movies contianing the keyword.
@@ -72,7 +76,27 @@ def list_movies(keyword: str = "") -> str:
     if df.empty:
         return f"ℹ️ No movies found for '{keyword}'."
 
-    lines = [
-        f"{row['Title']} ({row['Year']}): {row['Own']}" for _, row in df.iterrows()
-    ]
-    return "\n".join(lines)
+    # lines = [
+    #     f"{row['Title']} ({row['Year']}): {row['Own']}" for _, row in df.iterrows()
+    # ]
+
+    lines = []
+    title_width = 40
+
+    for _, row in df.iterrows():
+        wrap_title = textwrap.wrap(
+            str(row["Title"]), width=title_width, break_long_words=True
+        )
+        own = "✅" if str(row["Own"]).lower() == "yes" else "❌"
+
+        lines.append([wrap_title[0], row["Year"], own])
+        for line in wrap_title[1:]:
+            lines.append([line, "", ""])
+
+    output = table2ascii(
+        header=["Title", "Year", "Owned"], body=lines, first_col_heading=True
+    )
+
+    return output
+
+    # return "\n".join(lines)

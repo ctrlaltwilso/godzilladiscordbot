@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 from discord.ui import View
 from dotenv import load_dotenv
 from movie_manager.movie_manager import update_movie, mark_not_owned, list_movies
@@ -9,9 +10,12 @@ import os
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
+GUILD_ID = os.getenv("GUILD_ID")
+assert GUILD_ID is not None, "GUILD_ID not set in .env!"
 assert TOKEN is not None, "DISCORD_TOKEN not set!"
 
 intents = discord.Intents.default()
+intents.guilds = True
 intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -42,19 +46,42 @@ class MovieUpdater(View):
         result = mark_not_owned(title=self.title, year=self.year)
         await interaction.response.send_message(result)
 
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        result = "Action Canceled."
+        await interaction.response.send_message(result)
 
-@bot.command()
-async def movie(ctx, year: int, *, title: str):
-    update_message = discord.Embed(
+
+@bot.tree.command(name="movie", description="Change ownership of a movie")
+@app_commands.describe(
+    year="The year the movie was released", title="The title of the movie"
+)
+async def movie(interaction: discord.Interaction, year: int, title: str):
+    embed = discord.Embed(
         title=f"{title} ({year})",
-        description="Use button to mark Owned or Not Owned",
+        description="Use buttons to mark Owned or Not Owned.",
         color=discord.Color.green(),
     )
 
-    await ctx.send(embed=update_message, view=MovieUpdater(title, year))
+    await interaction.response.send_message(embed=embed, view=MovieUpdater(title, year))
+
+
+# Sync API 2.0 slash commands
+@bot.event
+async def on_ready():
+    guild = discord.Object(id=int(GUILD_ID))  # type: ignore
+    print(f"Logged in as {bot.user}")
+    try:
+        bot.tree.clear_commands(guild=guild)
+        print("Cleared Guild Commands.")
+        synced = await bot.tree.sync(guild=guild)
+        print(f"Synced {len(synced)} commands globally.")
+    except Exception as e:
+        print(f"Error syncing commands: {e}")
 
 
 # Legacy
+# TODO: Can Remove ?
 @bot.command()
 async def own(ctx, year: int, *, title: str):
     """Mark movie as owned."""
@@ -64,6 +91,7 @@ async def own(ctx, year: int, *, title: str):
 
 
 # Legacy
+# TODO: Can remove ?
 @bot.command()
 async def notown(ctx, year: int, *, title: str):
     """Marks movies as not owned."""
@@ -71,14 +99,23 @@ async def notown(ctx, year: int, *, title: str):
     await ctx.send(result)
 
 
+# TODO: Change to paginated response and remove ascii table
+# TODO: Will need class to handle view
+# TODO: Change to Slash Command
 @bot.command()
 async def movies(ctx, *keywords):
     keyword = " ".join(keywords)
     result = list_movies(keyword=keyword)
-    await ctx.send(result)
+    discord_m = discord.Embed(
+        title="Godzilla Films List",
+        description=f"```{result}```",
+        color=discord.Color.dark_red(),
+    )
+    await ctx.send(embed=discord_m)
 
 
 # Embed Additions
+# TODO: Change to slash Command
 @bot.command()
 async def vegetables(ctx):
     e_message = discord.Embed(
@@ -93,4 +130,4 @@ async def vegetables(ctx):
     await ctx.send(embed=e_message)
 
 
-bot.run(token=TOKEN)
+bot.run(TOKEN)

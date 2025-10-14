@@ -21,6 +21,7 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
+# TODO: Implemtnt logger for calls
 def log_action(action: str, user: str):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{now}] {user}: {action}")
@@ -104,11 +105,14 @@ class MovieView(View):
             await interaction.response.edit_message(embed=self.make_embed(), view=self)
 
 
-@bot.tree.command(name="movie", description="Change ownership of a movie")
+movie_group = app_commands.Group(name="movie", description="Movie related commands")
+
+
+@movie_group.command(name="own", description="Change ownership of a movie")
 @app_commands.describe(
     year="The year the movie was released", title="The title of the movie"
 )
-async def movie(interaction: discord.Interaction, year: int, title: str):
+async def own_movie(interaction: discord.Interaction, year: int, title: str):
     embed = discord.Embed(
         title=f"{title} ({year})",
         description="Use buttons to mark Owned or Not Owned.",
@@ -118,18 +122,131 @@ async def movie(interaction: discord.Interaction, year: int, title: str):
     await interaction.response.send_message(embed=embed, view=MovieUpdater(title, year))
 
 
+@movie_group.command(
+    name="list", description="List Godzilla Films, can search by keyword"
+)
+async def return_movies(interaction: discord.Interaction, keyword: str = ""):
+    # keyword = " ".join(keyword)
+    movies = list_movies(keyword=keyword)
+    if not movies:
+        await interaction.response.send_message("ℹ️ No movies found.")
+        return
+    view = MovieView(movies)
+    await interaction.response.send_message(embed=view.make_embed(), view=view)
+
+
+bot.tree.add_command(movie_group)
+
+cmd = bot.tree.get_command("movie")
+print("Movie group exists in memory?", cmd is not None)
+
+if isinstance(cmd, app_commands.Group):
+    for sub in cmd.walk_commands():
+        print("Subcommand in memory:", sub.name)
+
+print(f"GuildID Type: {type(int(GUILD_ID))}")
+
+
+godzilla_group = app_commands.Group(name="godzilla", description="godzilla commands")
+
+
+@godzilla_group.command(
+    name="vegetables", description="make godzilla eat his vegetables"
+)
+async def eat_vegetables(interaction: discord.Interaction):
+    e_message = discord.Embed(
+        title="Gojira Butler ",
+        type="rich",
+        description="Godzilla eats his vegetables.",
+        color=discord.Color.green(),
+    )
+    image_url = "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExZWYwd2w1Y3RkdnA1bjN0ZTJ4cXFieWFiZHN0M3ptbmd5aXR5bW1yeiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2A0jXvUa3KOufBYT53/giphy.gif"
+    e_message.set_image(url=image_url)
+
+    await interaction.response.send_message(embed=e_message)
+
+
+bot.tree.add_command(godzilla_group)
+
+
+# For slash commands
+def is_owner():
+    async def predicate(interaction: discord.Interaction, *args, **kwargs) -> bool:
+        if isinstance(interaction.client, commands.Bot):
+            return await interaction.client.is_owner(interaction.user)
+        return False
+
+    return app_commands.check(predicate)
+
+
+@bot.tree.command(name="sync", description="Sync slash commands(owner only, don't use)")
+@is_owner()
+async def sync_commands(interaction: discord.Interaction):
+    guild = discord.Object(id=int(GUILD_ID))  # type: ignore
+    bot.tree.copy_global_to(guild=guild)
+    synced = await bot.tree.sync(guild=guild)
+    await interaction.response.send_message(
+        f"Synced {len(synced)} commands.", ephemeral=True
+    )
+    guild_cmds = await bot.tree.fetch_commands(guild=guild)
+    global_cmds = await bot.tree.fetch_commands()
+
+    print(f"Guild Commands: {guild_cmds}\nGlobal commands: {global_cmds}")
+
+
 # Sync API 2.0 slash commands
 @bot.event
 async def on_ready():
-    guild = discord.Object(id=int(GUILD_ID))  # type: ignore
     print(f"Logged in as {bot.user}")
-    try:
-        bot.tree.clear_commands(guild=guild)
-        print("Cleared Guild Commands.")
-        synced = await bot.tree.sync(guild=guild)
-        print(f"Synced {len(synced)} commands globally.")
-    except Exception as e:
-        print(f"Error syncing commands: {e}")
+    for guild in bot.guilds:
+        print("Bot is in guild:", guild.id, guild.name)
+
+
+# For non slash commands
+def isowner_ctx():
+    async def predicate(ctx: commands.Context):
+        print("Author:", ctx.author)
+        return await ctx.bot.is_owner(ctx.author)
+
+    return commands.check(predicate)
+
+
+@bot.command()
+@isowner_ctx()
+async def sinkit(ctx):
+    guild = discord.Object(id=int(GUILD_ID))  # type: ignore
+
+    print("DEBUG: Commands in bot.tree before sync ===")
+    for cmd in bot.tree.walk_commands():
+        print(f"{cmd.name} {type(cmd)}")
+
+    bot.tree.copy_global_to(guild=guild)
+    synced = await bot.tree.sync(guild=guild)
+    print(f"Synced {len(synced)} commands.")
+    for cmd in synced:
+        print(f"- {cmd.name}")
+
+    global_synced = await bot.tree.sync()
+    print(f"Global synced: {len(global_synced)}")
+
+    await ctx.send(f"Synced {len(synced)} commands.")
+
+
+@bot.command()
+@isowner_ctx()
+async def clearc(ctx):
+    guild = discord.Object(id=int(GUILD_ID))  # type: ignore
+    bot.tree.clear_commands(guild=guild)
+    bot.tree.clear_commands(guild=None)
+
+    await bot.tree.sync(guild=guild)
+    await bot.tree.sync(guild=None)
+
+    guild_cmds = await bot.tree.fetch_commands(guild=guild)
+    global_cmds = await bot.tree.fetch_commands()
+
+    print(f"Guild Commands: {guild_cmds}\nGlobal commands: {global_cmds}")
+    await ctx.send("Cleared commands")
 
 
 # TODO: Change to Slash Command
@@ -142,22 +259,6 @@ async def movies(ctx, *keywords):
 
     view = MovieView(movies)
     await ctx.send(embed=view.make_embed(), view=view)
-
-
-# Embed Additions
-# TODO: Change to slash Command
-@bot.command()
-async def vegetables(ctx):
-    e_message = discord.Embed(
-        title="Gojira Butler ",
-        type="rich",
-        description="Godzilla eats his vegetables.",
-        color=discord.Color.green(),
-    )
-    image_url = "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExZWYwd2w1Y3RkdnA1bjN0ZTJ4cXFieWFiZHN0M3ptbmd5aXR5bW1yeiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2A0jXvUa3KOufBYT53/giphy.gif"
-    e_message.set_image(url=image_url)
-
-    await ctx.send(embed=e_message)
 
 
 bot.run(TOKEN)

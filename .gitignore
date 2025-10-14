@@ -223,4 +223,5 @@ __marimo__/
 .~lock.*#
 
 # Source folder
+*.wav
 src/

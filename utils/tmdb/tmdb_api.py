@@ -56,7 +56,7 @@ class TMDbAPI:
         self, title: str, year: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Retrieve a single movie from TMDB title, using exact of fuzzy matching.
+        Retrieve a single movie from TMDB title, using exact or fuzzy matching.
 
         This function wraps `search_movie`:
         - First attempts to find an exact title match (case-insensitive).

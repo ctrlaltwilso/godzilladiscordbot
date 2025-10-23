@@ -24,9 +24,9 @@ class ProductionCompany:
 
 @dataclass
 class ParsedCredits:
-    directors: List[CrewMember]
-    writers: List[CrewMember]
-    actors: List[CastMember]
+    directors: List[CrewMember] = field(default_factory=list)
+    writers: List[CrewMember] = field(default_factory=list)
+    actors: List[CastMember] = field(default_factory=list)
 
 
 @dataclass
@@ -42,4 +42,13 @@ class MovieDetails:
     poster_path: str = ""
     production_companies: List[ProductionCompany] = field(default_factory=list)
     original_language: str = ""
-    origin_countrys: List[str] = field(default_factory=list)
+    origin_countries: List[str] = field(default_factory=list)
+
+
+@dataclass
+class MovieResults:
+    success: bool
+    details: MovieDetails = field(default_factory=MovieDetails)
+    poster: str = ""
+    credits: ParsedCredits = field(default_factory=ParsedCredits)
+    error: str = ""

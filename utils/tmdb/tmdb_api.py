@@ -8,8 +8,9 @@ from models import (
     MovieDetails,
     ProductionCompany,
     ParsedCredits,
+    MovieResults,
 )
-from pprint import pprint
+from rapidfuzz import process, fuzz
 
 
 class TMDbAPI:
@@ -55,11 +56,12 @@ class TMDbAPI:
         self, title: str, year: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Retrieve a single movie from TMDB that matches the exact title (case-insensitive).
+        Retrieve a single movie from TMDB title, using exact of fuzzy matching.
 
-        This function wraps `search_movie` and returns the first movies whose title matches
-        exactly the provided `title`. You can optionally provide a release year to narrow
-        the search. Returns None if no exact match is found.
+        This function wraps `search_movie`:
+        - First attempts to find an exact title match (case-insensitive).
+        - If not exact match is found, performs fuzzy matching to select the closest title.
+        - Returns None if no sufficiently close match exists.
 
         Parameters:
             title (str): The exact title of the move to search.
@@ -67,12 +69,30 @@ class TMDbAPI:
 
         Returns:
             Optional[Dict[str, Any]]: A dictionary representing the movie details if found,
-            or None if no exact match exists.
+            or None if no match passes the fuzzy matching threshold.
         """
         results = self.search_movie(title, year)
         for movie in results:
             if movie.get("title", "").lower() == title.lower():
                 return movie
+
+        titles = [m.get("title", "") for m in results]
+        if not titles:
+            print("[Fuzzy] No titles found in TMDB results.")
+
+        match_results = process.extractOne(title, titles, scorer=fuzz.token_sort_ratio)
+
+        if match_results is None:
+            print("[Fuzzy] No fuzzy match found.")
+            return None
+
+        best_match, score, idx = match_results
+
+        print(f"[Fuzzy] Closest match: '{best_match}' ({score:.1f}%)")
+        if score >= 70:
+            return results[idx]
+
+        print("[Fuzzy] Match socre too low.")
         return None
 
     def get_movie_details(self, movie_id: int) -> Dict[str, Any]:
@@ -140,7 +160,7 @@ class TMDbAPI:
                 if isinstance(p, dict)
             ],
             original_language=raw.get("original_language", ""),
-            origin_countrys=raw.get("origin_country", []),
+            origin_countries=raw.get("origin_country", []),
         )
 
     def get_movie_img(self, img_address: str) -> str | None:
@@ -276,19 +296,41 @@ class TMDbAPI:
             actors=actors,
         )
 
-    def get_movie_embed_data(self, title: str, year=None, include_adult: bool = True):
-        # search = self.search_movie(title, year)
-        # self.get_movie_details(search)
-        # self.get_movie_img()
-        pass
+    def get_movie_embed_data(self, title: str, year: Optional[int] = None):
+        search = self.get_movie_by_title(title, year)
+
+        if search:
+            id = search.get("id")
+            if id is not None:
+                r_details = self.get_movie_details(id)
+                details = self.parse_movie_details(r_details)
+                movie_poster = self.get_movie_img(details.poster_path)
+
+                r_credits = self.get_movie_credits(id)
+                credits = self.parse_movie_credits(r_credits)
+
+                return MovieResults(
+                    success=True,
+                    details=details,
+                    poster=movie_poster or "",
+                    credits=credits,
+                )
+
+        return MovieResults(success=False, error="Resutls not Found.")
 
 
-api = TMDbAPI()
-movie_details = api.get_movie_details(940721)
-pmd = api.parse_movie_details(movie_details)
-movie_creds = api.get_movie_credits(940721)
-pmc = api.parse_movie_credits(movie_creds)
-print("Movie Information:")
-pprint(pmd)
-print("\nCast & Crew:")
-pprint(pmc)
+# ----- Example Usage ----- #
+# api = TMDbAPI()
+# lookup = api.get_movie_embed_data("Godzila Minus One", 2023)
+# if lookup.success:
+#     details = lookup.details
+#     poster = lookup.poster
+#     credits = lookup.credits
+#     print("Movie Details:")
+#     print(details)
+#     print("\nPoster img: ", poster)
+#     print("\nDirector: ", credits.directors)
+#     print("\nWriter: ", credits.writers)
+#     print("\nMain Cast: ", credits.actors)
+# else:
+#     print(lookup.error)

@@ -2,7 +2,7 @@ import requests
 import os
 from dotenv import load_dotenv
 from typing import Dict, Any, Optional, List
-from models import (
+from .models import (
     CrewMember,
     CastMember,
     MovieDetails,
@@ -166,7 +166,7 @@ class TMDbAPI:
     def get_movie_img(self, img_address: str) -> str | None:
         # Return full URL for a movie image
         if img_address:
-            return f"{self.base_url}{img_address}"
+            return f"{self.base_img}{img_address}"
         return None
 
     def get_movie_credits(self, movie_id: int) -> Dict[str, Any]:
@@ -296,7 +296,9 @@ class TMDbAPI:
             actors=actors,
         )
 
-    def get_movie_embed_data(self, title: str, year: Optional[int] = None):
+    def get_movie_embed_data(
+        self, title: str, year: Optional[int] = None
+    ) -> MovieResults:
         search = self.get_movie_by_title(title, year)
 
         if search:
@@ -316,7 +318,7 @@ class TMDbAPI:
                     credits=credits,
                 )
 
-        return MovieResults(success=False, error="Resutls not Found.")
+        return MovieResults(success=False, error="Results not Found.")
 
 
 # ----- Example Usage ----- #
